@@ -14,6 +14,7 @@ import re
 from yelp import query_api
 import matplotlib.pyplot as plt
 from collections import Counter
+import calendar
 
 try:
     # For Python 3.0 and later
@@ -37,20 +38,7 @@ allRes['vicinity']=[]
 allRes['types']=[]
 allRes['url']=[]
 allRes['pop']=[]
-
-CLIENT_ID = 'H6j4ajh3R67T15sIpsqPXA'
-CLIENT_SECRET = 'jsnjXTq7ggq0mvV621EVVvfOtixyKZbr3y9ZCyVkSuiE5Qzmv4o1B6r9Sov4bWIA'
-
-# API constants
-API_HOST = 'https://api.yelp.com'
-SEARCH_PATH = '/v3/businesses/search'
-BUSINESS_PATH = '/v3/businesses/'  # Business ID will come after slash.
-TOKEN_PATH = '/oauth2/token'
-GRANT_TYPE = 'client_credentials'
-
-DEFAULT_TERM = 'food'
-DEFAULT_LOCATION = 'New York, NY'#'40.731509,-73.99212'
-SEARCH_LIMIT = 3
+allRes['open_days']=[]
 
 def frange(x, y, jump):
   while x < y:
@@ -66,15 +54,14 @@ def getAllGPS():
 coorlist=getAllGPS()
 driver = webdriver.Chrome()
 
-def getIndexes(url): # grab past value from mon-sun,6am-12am,18 values a day and current live value	
+def getIndexes(url,open_days): # grab past value from mon-sun,6am-12am,18 values a day and current live value	
 	res = {}
 	res['time']=[]
-	res['Mon']=[]
-	res['Tue']=[]
-	res['Wed']=[]
-	res['Thu']=[]
-	res['Fri']=[]
-	res['Sat']=[]
+	for i in range(len(open_days)):
+		if open_days[i]==0:
+			res['Sun']=[]
+		else:
+			res[str(calendar.day_abbr[int(open_days[i])-1])]=[]
 
 	value = []
 	live_tex = []
@@ -105,25 +92,13 @@ def getIndexes(url): # grab past value from mon-sun,6am-12am,18 values a day and
 				res['current_value'] = value[ele].get_attribute("aria-label") 
 
 	res['time'].append(list(Counter(times).keys()))
-	for i in range(len(times)):
+	for i in range(len(times)): #attach values to weekdays at the order from place detail API
 		appeared=list(Counter(times[:i+1]).values())[list(Counter(times[:i+1]).keys()).index(times[i])]
-		j=i
-		if appeared==1:
-			res['Mon'].append(valuess[j])
-		elif appeared==2:
-			res['Tue'].append(valuess[j])
-		elif appeared==3:
-			res['Wed'].append(valuess[j])
-		elif appeared==4:
-			res['Thu'].append(valuess[j])
-		elif appeared==5:
-			res['Fri'].append(valuess[j])
-		elif appeared==6:
-			res['Sat'].append(valuess[j])
+		res[list(res.keys())[appeared]].append(valuess[i])
+
 	print(res)			
 	return res
 	
-
 for a in range(len(coorlist)):
 	page=requests.get("https://maps.googleapis.com/maps/api/place/nearbysearch/json?location="+coorlist[a]+"&radius=55&keyword=restaurant&key=AIzaSyCs9iFQSqVfgFtPhey4WB-zwHd5hhJPeYs")#key1=AIzaSyA4ZJTg8gVk9Dg4O_nI3LDCeXrZwXfaU2c  key2=AIzaSyCs9iFQSqVfgFtPhey4WB-zwHd5hhJPeYs
 	tree=html.fromstring(page.content)
@@ -132,8 +107,9 @@ for a in range(len(coorlist)):
 	stuff2=xmlify(stuff)#stuff2 becomes string
 	stuff3=json.loads(stuff2)#stuff3 set to be json
 
-	if len(stuff3['results']) != 0:
-		for b in range(len(stuff3['results'])):
+	if len(stuff3['results']) != 0: 
+		for b in range(len(stuff3['results'])): #gets all the nearby places
+			days_list=[]
 			name=re.sub(r'&amp;', '&', stuff3['results'][b]['name'])
 			allRes['name'].append(name)
 			page2=requests.get("https://maps.googleapis.com/maps/api/place/details/json?key=AIzaSyCs9iFQSqVfgFtPhey4WB-zwHd5hhJPeYs&placeid="+stuff3['results'][b]['place_id'])
@@ -146,33 +122,36 @@ for a in range(len(coorlist)):
 			allRes['lon'].append(stuff3['results'][b]['geometry']['location']['lng'])
 			allRes['vicinity'].append(stuff3['results'][b]['vicinity'])
 			allRes['types'].append(stuff3['results'][b]['types'])
+			for c in range(len(stu3['result']['opening_hours']['periods'])):
+				days_list.append(stu3['result']['opening_hours']['periods'][c]['open']['day'])
 			try:
 				allRes['gopen_now'].append(stuff3['results'][b]['opening_hours']['open_now'])
 			except:
 				allRes['gopen_now'].append("N/A")
+			allRes['open_days'].append(days_list)			
+# print(allRes)
 
 for ele in range(len(allRes['url'])):
-	allRes['pop'].append(getIndexes(allRes['url'][ele]).copy())
+	allRes['pop'].append(getIndexes(allRes['url'][ele],allRes['open_days'][ele]).copy())
 	print(str(ele+1)+" Place(s) Scraped")
 # getIndexes("https://maps.google.com/?cid=12777293506627589287") #for testing
-
-# print(allRes)
 
 try:
     for i in range(len(allRes['name'])):
     	query_api(allRes['name'][i],allRes['lat'][i],allRes['lon'][i])
     	fig, ax=plt.subplots()
-    	re1=ax.bar(np.arange(18),allRes['pop'][i]['Mon'],0.1) 
-    	re2=ax.bar(np.arange(18)+0.1,allRes['pop'][i]['Tue'],0.1)
-    	re3=ax.bar(np.arange(18)+0.2,allRes['pop'][i]['Wed'],0.1)
-    	re4=ax.bar(np.arange(18)+0.3,allRes['pop'][i]['Thu'],0.1)
-    	re5=ax.bar(np.arange(18)+0.4,allRes['pop'][i]['Fri'],0.1)
+    	re=[]
+    	lege=[]
+    	v=list(allRes['pop'][i].keys())[1:]
+    	for j in range(len(v)):
+    		re.append(ax.bar(np.arange(18)+float(j/10),allRes['pop'][i].get(v[j]),0.1)) 
+    		lege.append(ax.bar(np.arange(18)+float(j/10),allRes['pop'][i].get(v[j]),0.1)[0])
     	re6=ax.bar(np.arange(18)+0.5,allRes['pop'][i]['Sat'],0.1)
-    	ax.set_xticks(np.arange(18)+0.25)
+    	ax.set_xticks(np.arange(18)+(len(list(allRes['pop'][i].keys())[1:])-1)/20)
     	ax.set_xticklabels(allRes['pop'][i]['time'][0])
     	ax.set_yticklabels(np.arange(0,120,20))
     	ax.set_title(allRes['name'][i])
-    	ax.legend((re1[0],re2[0],re3[0],re4[0],re5[0],re6[0]),list(allRes['pop'][i].keys())[1:])
+    	ax.legend(lege,list(allRes['pop'][i].keys())[1:])
     	fig.set_size_inches(10, 5)
     	plt.show()
 except HTTPError as error:
@@ -183,7 +162,6 @@ except HTTPError as error:
             error.read(),
         )
     )
-
 
 # Res=pd.DataFrame(allRes)
 # with open('res.pickle','wb') as mydata:
