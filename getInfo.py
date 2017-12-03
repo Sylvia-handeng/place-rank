@@ -40,6 +40,8 @@ allRes['url']=[]
 allRes['pop']=[]
 allRes['open_days']=[]
 
+co=['r','#FF7F00','y','g','c','b','m','']
+
 def frange(x, y, jump):
   while x < y:
     yield x
@@ -81,6 +83,7 @@ def getIndexes(url,open_days): # grab past value from mon-sun,6am-12am,18 values
 		# text is an object of webElemenet
 	if len(live_value) != 0:
 		res['live_value'] = live_value[0].get_attribute("aria-label")
+	
 	for ele in range(len(value)):
 		classname = value[ele].get_attribute("class")
 		if classname.find("live") == -1:
@@ -90,8 +93,9 @@ def getIndexes(url,open_days): # grab past value from mon-sun,6am-12am,18 values
 				valuess.append(float(re.sub(r'%','',index_list[0])))
 			if "Current" in str(value[ele].get_attribute("aria-label")):
 				res['current_value'] = value[ele].get_attribute("aria-label") 
-
-	res['time'].append(list(Counter(times).keys()))
+	
+	res['time'].append([list(Counter(times).keys())[i].strip().split('.')[0] for i in range(len(list(Counter(times).keys())))])
+	
 	for i in range(len(times)): #attach values to weekdays at the order from place detail API
 		appeared=list(Counter(times[:i+1]).values())[list(Counter(times[:i+1]).keys()).index(times[i])]
 		res[list(res.keys())[appeared]].append(valuess[i])
@@ -144,9 +148,9 @@ try:
     	lege=[]
     	v=list(allRes['pop'][i].keys())[1:]
     	for j in range(len(v)):
-    		re.append(ax.bar(np.arange(18)+float(j/10),allRes['pop'][i].get(v[j]),0.1)) 
+    		re.append(ax.bar(np.arange(18)+float(j/10),allRes['pop'][i].get(v[j]),color=co[j],width=0.1)) 
+    		# re.append(ax.bar(np.arange(18)+float(j/10),allRes['pop'][i].get(v[j]),0.1)) 
     		lege.append(ax.bar(np.arange(18)+float(j/10),allRes['pop'][i].get(v[j]),0.1)[0])
-    	re6=ax.bar(np.arange(18)+0.5,allRes['pop'][i]['Sat'],0.1)
     	ax.set_xticks(np.arange(18)+(len(list(allRes['pop'][i].keys())[1:])-1)/20)
     	ax.set_xticklabels(allRes['pop'][i]['time'][0])
     	ax.set_yticklabels(np.arange(0,120,20))
