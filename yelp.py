@@ -129,23 +129,23 @@ def query_api(term, lat, lon):
         print(u'No businesses for {0} in {1} found.'.format(term, lat, lon))
         return
     bus={}
-    bus['name']=[]
-    bus['lat']=[]
-    bus['lon']=[]
-    bus['open_now']=[]
-    bus['rating']=[]
-    bus['#reviews']=[]
+    # bus['name']=[]
+    # bus['lat']=[]
+    # bus['lon']=[]
+    bus['y_open_now']=[]
+    bus['y_rating']=[]
+    bus['y_#reviews']=[]
 
     for i in range(len(businesses)):
         response = get_business(bearer_token, businesses[i]['id'])
         if term.split(' ')[0]==response['name'].split(' ').copy()[0] and round(float(lat),3)==round(float(response['coordinates']['latitude']),3) and round(float(lon),3)==round(float(response['coordinates']['longitude']),3):
-            bus['name'].append(response['name'])
-            bus['lat'].append(response['coordinates']['latitude'])
-            bus['lon'].append(response['coordinates']['longitude'])
-            bus['open_now'].append(response['hours'][0]['is_open_now'])
-            bus['rating'].append(response['rating'])
-            bus['#reviews'].append(response['review_count'])
-    print(bus)
+            # bus['name'].append(response['name'])
+            # bus['lat'].append(response['coordinates']['latitude'])
+            # bus['lon'].append(response['coordinates']['longitude'])
+            bus['y_open_now'].append(response['hours'][0]['is_open_now'])
+            bus['y_rating'].append(response['rating'])
+            bus['y_#reviews'].append(response['review_count'])
+    return bus
 
 def main():
     # parser = argparse.ArgumentParser()
